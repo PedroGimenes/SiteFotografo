@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Abertura Fotográfica</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        /* SPLASH PRINCIPAL */
+        .camera-splash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        /* VISOR DA CÂMERA - 90% DA TELA */
+        .viewport {
+            position: relative;
+            width: 90%;
+            height: 90%;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 20px;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+
+        /* FOTO DE FUNDO DO VISOR */
+        .viewfinder-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: 1;
+        }
+
+        /* OVERLAY ESCURO PARA DESTACAR OS ELEMENTOS */
+        .viewfinder-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+
+        /* GRADE COM 4 PONTOS */
+        .focus-grid {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100px;
+            height: 100px;
+            z-index: 15;
+            animation: focusPulse 1.5s ease-out;
+        }
+
+        .focus-corner {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255,255,255,0.9);
+        }
+
+        /* Canto superior esquerdo */
+        .corner-tl {
+            top: 0;
+            left: 0;
+            border-right: none;
+            border-bottom: none;
+        }
+
+        /* Canto superior direito */
+        .corner-tr {
+            top: 0;
+            right: 0;
+            border-left: none;
+            border-bottom: none;
+        }
+
+        /* Canto inferior esquerdo */
+        .corner-bl {
+            bottom: 0;
+            left: 0;
+            border-right: none;
+            border-top: none;
+        }
+
+        /* Canto inferior direito */
+        .corner-br {
+            bottom: 0;
+            right: 0;
+            border-left: none;
+            border-top: none;
+        }
+
+        @keyframes focusPulse {
+            0% { 
+                width: 50px; 
+                height: 50px; 
+                opacity: 0;
+            }
+            50% { 
+                width: 120px; 
+                height: 120px; 
+                opacity: 1;
+            }
+            100% { 
+                width: 100px; 
+                height: 100px; 
+                opacity: 0;
+            }
+        }
+
+        /* INFORMAÇÕES DA CÂMERA */
+        .camera-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            color: rgba(255,255,255,0.9);
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 20;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.4);
+            padding: 8px 12px;
+            border-radius: 8px;
+            backdrop-filter: blur(4px);
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        /* EXPOSIÇÃO */
+        .exposure-bar {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            height: 100px;
+            width: 4px;
+            background: rgba(255,255,255,0.3);
+            z-index: 20;
+        }
+
+        .exposure-level {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            background: #ffffff;
+            transition: height 0.1s;
+            animation: exposureMeter 2s infinite;
+        }
+
+        @keyframes exposureMeter {
+            0%, 100% { height: 60%; opacity: 0.8; }
+            50% { height: 80%; opacity: 1; }
+        }
+
+        /* FLASH EFFECT */
+        .flash {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: white;
+            z-index: 30;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* FOTO CAPTURADA */
+        .captured-photo {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 25;
+            opacity: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform: scale(1.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .photo-content {
+            text-align: center;
+            color: white;
+        }
+
+        .photo-content h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .photo-content p {
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        /* TEXTOS DO VISOR */
+        .viewfinder-text {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: rgba(255,255,255,0.9);
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 20;
+            animation: blink 1s infinite;
+            text-shadow: 0 0 5px rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.4);
+            padding: 4px 10px;
+            border-radius: 6px;
+            backdrop-filter: blur(4px);
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        /* ANIMAÇÕES PRINCIPAIS */
+        @keyframes shutterAnimation {
+            0% { transform: scale(1); filter: brightness(1); }
+            50% { transform: scale(0.98); filter: brightness(0.7); }
+            100% { transform: scale(1); filter: brightness(1); }
+        }
+
+        .shutter-effect {
+            animation: shutterAnimation 0.2s ease;
+        }
+
+        /* BOTÃO SKIP */
+        .skip-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.3);
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 10001;
+            transition: all 0.3s;
+        }
+
+        .skip-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        /* TEXTO INICIAL */
+        .initial-text {
+            position: absolute;
+            bottom: 30%;
+            left: 0;
+            right: 0;
+            text-align: center;
+            color: rgba(255,255,255,0.9);
+            font-family: monospace;
+            font-size: 18px;
+            z-index: 10;
+            animation: pulse 2s infinite;
+            text-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.6; transform: translateY(0); }
+            50% { opacity: 1; transform: translateY(-5px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="camera-splash" id="cameraSplash">
+        <!-- VISOR DA CÂMERA -->
+        <div class="viewport" id="viewport">
+            <!-- FOTO DE FUNDO (simula o que a câmera está vendo) -->
+            <img class="viewfinder-image" id="viewfinderImage" src="https://picsum.photos/id/104/1920/1080" alt="viewfinder">
+            
+            <!-- Overlay escuro para destacar elementos -->
+            <div class="viewfinder-overlay"></div>
+
+            <!-- GRADE COM 4 PONTOS -->
+            <div class="focus-grid" id="focusGrid">
+                <div class="focus-corner corner-tl"></div>
+                <div class="focus-corner corner-tr"></div>
+                <div class="focus-corner corner-bl"></div>
+                <div class="focus-corner corner-br"></div>
+            </div>
+
+            <!-- Texto do visor -->
+            <div class="viewfinder-text" id="viewfinderText">
+                [READY]
+            </div>
+
+            <!-- Informações da câmera -->
+            <div class="camera-info">
+                <div class="info-row">
+                    <span>ƒ/2.8</span>
+                    <span>ISO 400</span>
+                    <span>1/250</span>
+                </div>
+                <div class="info-row">
+                    <span>WB: AUTO</span>
+                    <span>AF: ON</span>
+                    <span id="batteryLevel">🔋 100%</span>
+                </div>
+            </div>
+
+            <!-- Barra de exposição -->
+            <div class="exposure-bar">
+                <div class="exposure-level"></div>
+            </div>
+
+            <!-- Texto inicial -->
+            <div class="initial-text" id="initialText">
+                 CLICK PARA FOTOGRAFAR <br>
+                <span style="font-size: 12px;">(ou pressione ESPAÇO)</span>
+            </div>
+        </div>
+
+        <!-- Efeito de flash -->
+        <div class="flash" id="flash"></div>
+
+        <!-- Foto capturada (resultado) -->
+        <div class="captured-photo" id="capturedPhoto">
+            <div class="photo-content">
+                <h2>📸 FOTO CAPTURADA!</h2>
+                <p>Bem-vindo ao Estúdio Fotográfico</p>
+                <div style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
+                    Carregando galeria...
+                </div>
+            </div>
+        </div>
+
+        <!-- Botão pular animação -->
+        <div class="skip-btn" id="skipBtn">PULAR ANIMAÇÃO →</div>
+    </div>
+
+    <script>
+        // Elementos
+        const splash = document.getElementById('cameraSplash');
+        const viewport = document.getElementById('viewport');
+        const flashEffect = document.getElementById('flash');
+        const capturedPhoto = document.getElementById('capturedPhoto');
+        const focusGrid = document.getElementById('focusGrid');
+        const viewfinderText = document.getElementById('viewfinderText');
+        const initialText = document.getElementById('initialText');
+        const skipBtn = document.getElementById('skipBtn');
+        const viewfinderImage = document.getElementById('viewfinderImage');
+
+        let canShoot = true;
+        let photoTaken = false;
+        let imageIndex = 0;
+
+        // Array de imagens (fotos diferentes que aparecem no visor)
+        const images = [
+            'https://picsum.photos/id/104/1920/1080',  // Cachorro
+            'https://picsum.photos/id/15/1920/1080',   // Natureza
+            'https://picsum.photos/id/20/1920/1080',   // Café
+            'https://picsum.photos/id/26/1920/1080',   // Cidade
+            'https://picsum.photos/id/96/1920/1080',   // Montanha
+            'https://picsum.photos/id/42/1920/1080',   // Piano
+            'https://picsum.photos/id/91/1920/1080',   // Estação
+            'https://picsum.photos/id/169/1920/1080'   // Pôr do sol
+        ];
+
+        // Trocar imagem de fundo a cada 3 segundos (simula procurando a foto perfeita)
+        function changeBackgroundImage() {
+            if (!photoTaken) {
+                imageIndex = (imageIndex + 1) % images.length;
+                viewfinderImage.src = images[imageIndex];
+            }
+        }
+
+        // Trocar imagem a cada 3 segundos
+        setInterval(changeBackgroundImage, 3000);
+
+        // Criar som do obturador
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playShutterSound() {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.frequency.value = 800;
+            gainNode.gain.value = 0.3;
+            
+            oscillator.start();
+            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioContext.currentTime + 0.3);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        // Função principal: TIRAR FOTO
+        function takePhoto() {
+            if (!canShoot || photoTaken) return;
+            
+            canShoot = false;
+            
+            // Reproduzir som do obturador
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            playShutterSound();
+            
+            // Efeito de obturador no viewport
+            viewport.classList.add('shutter-effect');
+            
+            // Flash
+            flashEffect.style.opacity = '1';
+            
+            // Remover texto inicial
+            initialText.style.opacity = '0';
+            
+            // Mudar texto do visor
+            viewfinderText.textContent = '[PROCESSING...]';
+            viewfinderText.style.animation = 'none';
+            
+            setTimeout(() => {
+                flashEffect.style.opacity = '0';
+                viewport.classList.remove('shutter-effect');
+                
+                // Mostrar foto capturada
+                capturedPhoto.style.opacity = '1';
+                capturedPhoto.style.transform = 'scale(1)';
+                capturedPhoto.style.transition = 'all 0.6s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+                
+                setTimeout(() => {
+                    setTimeout(() => {
+                        photoTaken = true;
+                        // Animação de fade out do splash
+                        splash.style.transition = 'opacity 1s ease';
+                        splash.style.opacity = '0';
+                        
+                        setTimeout(() => {
+                            splash.style.display = 'none';
+                            document.body.style.overflow = 'auto';
+                            showMainContent();
+                        }, 900);
+                    }, 600);
+                }, 200);
+            }, 120);
+        }
+
+        // Conteúdo principal
+        function showMainContent() {
+            const mainContent = document.createElement('div');
+            mainContent.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                color: white;
+                font-family: Arial, sans-serif;
+                flex-direction: column;
+                z-index: 9999;
+                animation: fadeIn 1s ease;
+            `;
+            mainContent.innerHTML = `
+                <style>
+                    @keyframes fadeIn {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                    }
+                </style>
+                <h1 style="font-size: 3rem; margin-bottom: 20px;">📸 Estúdio Fotográfico</h1>
+                <p style="font-size: 1.2rem;">Bem-vindo ao seu acervo visual</p>
+                <button onclick="location.reload()" style="margin-top: 30px; padding: 10px 20px; background: white; border: none; border-radius: 5px; cursor: pointer;">Ver Galeria</button>
+            `;
+            document.body.appendChild(mainContent);
+        }
+
+        // Foco automático
+        function autoFocus() {
+            focusGrid.style.animation = 'none';
+            focusGrid.offsetHeight;
+            focusGrid.style.animation = 'focusPulse 1.5s ease-out';
+            
+            setTimeout(() => {
+                viewfinderText.textContent = '[READY]';
+            }, 800);
+        }
+
+        // Eventos
+        splash.addEventListener('click', (e) => {
+            if (e.target !== skipBtn && !photoTaken) {
+                autoFocus();
+                setTimeout(() => {
+                    takePhoto();
+                }, 800);
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !photoTaken) {
+                e.preventDefault();
+                autoFocus();
+                setTimeout(() => {
+                    takePhoto();
+                }, 800);
+            }
+        });
+
+        skipBtn.addEventListener('click', () => {
+            splash.style.transition = 'opacity 0.5s ease';
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                showMainContent();
+            }, 500);
+        });
+
+        // Simular bateria
+        setInterval(() => {
+            if (!photoTaken) {
+                const batteryLevels = ['🔋 100%', '🔋 98%', '🔋 97%', '🔋 96%'];
+                const randomBattery = batteryLevels[Math.floor(Math.random() * batteryLevels.length)];
+                const batterySpan = document.getElementById('batteryLevel');
+                if (batterySpan) batterySpan.textContent = randomBattery;
+            }
+        }, 8000);
+
+        // Ativar áudio
+        document.body.addEventListener('click', () => {
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+        }, { once: true });
+    </script>
+</body>
+</html>
